@@ -2034,6 +2034,7 @@ hBitmapsSBT := Map(), hBitmapsSBT.CaseSense := 0
 #Include "stickerstack\bitmaps.ahk"
 #Include "stickerprinter\bitmaps.ahk"
 #Include "memorymatch\bitmaps.ahk"
+#Include "cocobelt\bitmaps.ahk"
 
 hBitmapsSB := Map()
 for x,y in hBitmapsSBT
@@ -2483,7 +2484,8 @@ MainGui.Add("Button", "x10 y40 w150 h40 vBasicEggHatcherButton Disabled", "Gifte
 MainGui.Add("Button", "x10 y82 w150 h40 vBitterberryFeederButton Disabled", "Bitterberry`nAuto-Feeder").OnEvent("Click", nm_BitterberryFeeder)
 MainGui.Add("Button", "x10 y124 w150 h40 Disabled", "Auto-Mutator`n(coming soon!)")
 ;other tools
-MainGui.Add("Button", "x10 y184 w150 h42 vGenerateBeeListButton Disabled", "Export Hive Bee List`n(for Hive Builder)").OnEvent("Click", nm_GenerateBeeList)
+MainGui.Add("Button", "x10 y184 w150 h20 vGenerateBeeListButton Disabled", "Export Hive Bee List`n(for Hive Builder)").OnEvent("Click", nm_GenerateBeeList)
+MainGui.Add("Button", "x10 y206 w150 h20 vCatchComboCoconuts Disabled", "Catch Combo Coconuts in Current Field").OnEvent("Click", nm_CatchComboCoconuts)
 ;calculators
 MainGui.Add("Button", "x175 y40 w150 h40 vTicketShopCalculatorButton Disabled", "Ticket Shop Calculator`n(Google Sheets)").OnEvent("Click", nm_TicketShopCalculatorButton)
 MainGui.Add("Button", "x175 y82 w150 h40 vSSACalculatorButton Disabled", "SSA Calculator`n(Google Sheets)").OnEvent("Click", nm_SSACalculatorButton)
@@ -21179,5 +21181,77 @@ nm_UpdateGUIVar(var)
 			default: ; "CheckBox", "Edit", "UpDown", "Slider"
 			MainGui[k].Value := %k%
 		}
+	}
+}
+nm_CatchComboCoconuts(*){
+	if !GetRobloxHWND()
+	{
+		MsgBox "You must have Bee Swarm Simulator open to use this!", "Catch Combo Coconuts", 0x40030 " T20"
+		return
+	}
+	; TODO: add parameters for distance correction
+	; need the bitmaps for coco combo
+	global FwdKey, LeftKey, BackKey, RightKey, RotUp, bitmaps
+	; make sure it's a top down view
+	sendinput "{" RotUp " 5}"
+
+	; copied from nm_BitterberryFeeder
+	Gdip_GraphicsClear(G), Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0xd0000000), -1, -1, windowWidth+1, 38), Gdip_DeleteBrush(pBrush)
+	Gdip_TextToGraphics(G, "Looking for Combo Coconuts... Right Click or Shift to Stop!", "x0 y0 cffff5f1f Bold Center vCenter s24", "Tahoma", windowWidth, 38)
+	UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, 38)
+	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc), Gdip_DeleteGraphics(G)
+	try {
+		Hotkey "Shift", ExitFunc, "On"
+		Hotkey "RButton", ExitFunc, "On"
+		Hotkey "F11", ExitFunc, "On"
+	}
+
+	pixelsPerTile := 9 ; an estimate based on usages of 9
+	prevdx := 0
+	prevdy := 0
+	Loop {
+		hwnd := GetRobloxHWND()
+		GetRobloxClientPos(hwnd)
+		; full screen check
+		ccpos := ""
+		pBMScreen := Gdip_BitmapFromScreen(windowX "|" windowY "|" windowWidth "|" windowHeight)
+		; only checks 1 instance
+		if (Gdip_ImageSearch(pBMScreen, bitmaps["combococonut"], &ccpos, , , , , , , ) < 1) {
+			Gdip_DisposeImage(pBMScreen)
+			HyperSleep(250)
+			continue
+		}
+		Gdip_DisposeImage(pBMScreen)
+		; OutputList .= LineDelim FoundX CoordDelim FoundY
+		posxy := StrSplit(ccpos, ",")
+		; lower x / y: left / up | higher x / y: right / down
+		ccx := posxy[1]
+		ccy := posxy[2]
+		dx := ccx - (windowX + (windowWidth // 2))
+		dy := ccy - (windowY + (windowHeight // 2))
+		d2x := dx - prevdx
+		d2y := dy - prevdy
+		prevdx = dx
+		prevdy = dy
+		; initial check to see if already in range
+		if (Abs(dx) < 5 && Abs(dy) < 5) {
+			HyperSleep(500)
+			continue
+		}
+		xkey := LeftKey
+		ykey := FwdKey
+		if (dx >= 0) {
+			xkey = RightKey
+		}
+		if (dy >= 0) {
+			ykey = BackKey
+		}
+		movement :=
+		(
+		nm_Walk(dx//pixelsPerTile, xkey) "
+		" nm_Walk(dy//pixelsPerTile, ykey)
+		)
+		nm_createWalk(movement)
+		nm_endWalk()
 	}
 }
