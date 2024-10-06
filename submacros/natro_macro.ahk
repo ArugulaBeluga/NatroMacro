@@ -21229,10 +21229,9 @@ nm_CatchComboCoconuts(*){
 		ccy := posxy[2]
 		dx := ccx - (windowX + (windowWidth // 2))
 		dy := ccy - (windowY + (windowHeight // 2))
-		d2x := dx - prevdx
-		d2y := dy - prevdy
-		prevdx = dx
-		prevdy = dy
+		nm_setStatus("Detected", dx = %dx% dy = %dy% prevdx = %prevdx% prevdy = %prevdy%)
+		prevdx := dx
+		prevdy := dy
 		; initial check to see if already in range
 		if (Abs(dx) < 5 && Abs(dy) < 5) {
 			HyperSleep(500)
@@ -21241,15 +21240,15 @@ nm_CatchComboCoconuts(*){
 		xkey := LeftKey
 		ykey := FwdKey
 		if (dx >= 0) {
-			xkey = RightKey
+			xkey := RightKey
 		}
 		if (dy >= 0) {
-			ykey = BackKey
-		}
+			ykey := BackKey
+		}.
 		movement :=
 		(
 		nm_Walk(dx//pixelsPerTile, xkey) "
-		" nm_Walk(dy//pixelsPerTile, ykey)
+		submacros/natro_macro.ahk" nm_Walk(dy//pixelsPerTile, ykey)
 		)
 		nm_createWalk(movement)
 		nm_endWalk()
