@@ -21225,9 +21225,128 @@ nm_CatchComboCoconuts(*){
 	'
 	))
 
+	. (
+	(
+	'
+	CoordMode "Pixel", "Screen"
+	OnExit(ExitFunc)
+	pToken := Gdip_Startup()
+
+	' nm_KeyVars() '
+
+	; bitmaps initialized in Walk.ahk
+	#Include "%A_ScriptDir%\nm_image_assets\offset\bitmaps.ahk"
+	#Include "%A_ScriptDir%\nm_image_assets\cocobelt\bitmaps.ahk"
+
+	hwnd := GetRobloxHWND()
+	ActivateRoblox()
+	GetRobloxClientPos(hwnd)
+	offsetY := GetYOffset(hwnd, &offsetfail)
+	if (offsetfail = 1) {
+		MsgBox "Unable to detect in-game GUI offset!``nStopping Catch Combo Coconuts!``n``nThere are a few reasons why this can happen:``n - Incorrect graphics settings (check Troubleshooting Guide!)``n - Your `'Experience Language`' is not set to English``n - Something is covering the top of your Roblox window``n``nJoin our Discord server for support!", "WARNING!!", "0x40030"
+		ExitApp
+	}
+
+	; make sure it is a top down view
+	sendinput "{" RotUp " 5}"
+	; align to a direction
+	sendinput "{" RotLeft " 5}"
+	Sleep 250
+	sendinput "{" RotRight " 5}"
+	Sleep 250
+	Loop 5
+	{
+		sendinput "{" ZoomOut " 1}"
+		Sleep 250
+	}
+	pToken := Gdip_Startup()
+	StatusBar := Gui("-Caption +E0x80000 +AlwaysOnTop +ToolWindow -DPIScale")
+	StatusBar.Show("NA")
+	hbm := CreateDIBSection(windowWidth, windowHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 2), Gdip_SetInterpolationMode(G, 2)
+	; Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0x60000000), -1, -1, windowWidth+1, windowHeight+1), Gdip_DeleteBrush(pBrush)
+	; UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, windowHeight)
+
+	; copied from nm_BitterberryFeeder
+	SetTopStatus(text)
+	{
+		Gdip_GraphicsClear(G), Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0xd0000000), -1, -1, windowWidth+1, 38), Gdip_DeleteBrush(pBrush)
+		Gdip_TextToGraphics(G, text "Right Click or Shift to Stop!", "x0 y0 cffff5f1f Bold Center vCenter s24", "Tahoma", windowWidth, 38)
+		UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, 38)
+		SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc), Gdip_DeleteGraphics(G)
+	}
+
+	DoWalk(tiles, MoveKey1, MoveKey2:=0){
+		Send "{" MoveKey1 " down}" (MoveKey2 ? "{" MoveKey2 " down}" : "")
+		Walk(tiles)
+		Send "{" MoveKey1 " up}" (MoveKey2 ? "{" MoveKey2 " up}" : "")
+	}
+
+	SetTopStatus("Looking for Combo Coconuts...")
+	try {
+		Hotkey "Shift", ExitFunc, "On"
+		Hotkey "RButton", ExitFunc, "On"
+		Hotkey "F11", ExitFunc, "On"
+	}
+
+	; diamond shape
+	moves := [
+		[150, 100],
+		[150, -100],
+		[-150, -100],
+		[-150, 100],
+	]
+
+	pixelsPerTile := 9 ; an estimate based on usages of 9
+	prevdx := 0
+	prevdy := 0
+	iteration := 0
+	Loop {
+		move := moves[Mod(iteration, 4)+1]
+		dx := move[1]
+		dy := move[2]
+		iteration := iteration + 1
+		xkey := LeftKey
+		ykey := FwdKey
+		if (dx <= 0) {
+			xkey := RightKey
+		}
+		if (dy <= 0) {
+			ykey := BackKey
+		}
+		adx := Abs(dx)
+		ady := Abs(dy)
+		; identify diagonals, get remainder dist
+		shareDist := Min(adx, ady)
+		radx := adx - shareDist
+		rady := ady - shareDist
+		; get the diagonal for 45-45-90 triangle
+		shareDiagDist := shareDist * 1.41421356
+		DoWalk(Floor(shareDiagDist/pixelsPerTile), xkey, ykey)
+		if (radx > rady) {
+			DoWalk(rady//pixelsPerTile, xkey)
+		}
+		if (rady > radx) {
+			DoWalk(rady//pixelsPerTile, ykey)
+		}
+	}
+
+	MsgBox "Test"
+
+	ExitFunc(*)
+	{
+		try StatusBar.Destroy()
+		try Gdip_Shutdown(pToken)
+		ExitApp
+	}
+	'
+	)) ; this is just ahk code, it will be executed as a new script
+
+
+	/*
 	; part 3
 	. (
-	'
+	('
 
 	' nm_KeyVars() '
 
@@ -21235,7 +21354,7 @@ nm_CatchComboCoconuts(*){
 	OnExit(ExitFunc)
 	pToken := Gdip_Startup()
 
-	bitmaps := Map()
+	; bitmaps initialized in Walk.ahk
 	#Include "%A_ScriptDir%\nm_image_assets\offset\bitmaps.ahk"
 	#Include "%A_ScriptDir%\nm_image_assets\cocobelt\bitmaps.ahk"
 
@@ -21327,7 +21446,7 @@ nm_CatchComboCoconuts(*){
 		ExitApp
 	}
 	'
-	)
+	))*/
 
 	shell := ComObject("WScript.Shell")
 	exec := shell.Exec('"' exe_path64 '" /script /force *')
