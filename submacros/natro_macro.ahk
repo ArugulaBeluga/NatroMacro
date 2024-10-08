@@ -3998,6 +3998,7 @@ nm_TabMiscLock(){
 	MainGui["BasicEggHatcherButton"].Enabled := 0
 	MainGui["BitterberryFeederButton"].Enabled := 0
 	MainGui["GenerateBeeListButton"].Enabled := 0
+	MainGui["CatchComboCoconuts"].Enabled := 0
 	MainGui["TicketShopCalculatorButton"].Enabled := 0
 	MainGui["SSACalculatorButton"].Enabled := 0
 	MainGui["BondCalculatorButton"].Enabled := 0
@@ -4013,6 +4014,7 @@ nm_TabMiscUnLock(){
 	MainGui["BasicEggHatcherButton"].Enabled := 1
 	MainGui["BitterberryFeederButton"].Enabled := 1
 	MainGui["GenerateBeeListButton"].Enabled := 1
+	MainGui["CatchComboCoconuts"].Enabled := 1
 	MainGui["TicketShopCalculatorButton"].Enabled := 1
 	MainGui["SSACalculatorButton"].Enabled := 1
 	MainGui["BondCalculatorButton"].Enabled := 1
@@ -21189,36 +21191,222 @@ nm_CatchComboCoconuts(*){
 		MsgBox "You must have Bee Swarm Simulator open to use this!", "Catch Combo Coconuts", 0x40030 " T20"
 		return
 	}
+	script :=
+	(
+	'
+	#NoTrayIcon
+	#SingleInstance Force
+
+	#Include "%A_ScriptDir%\lib"
+	#Include "Gdip_All.ahk"
+	#Include "Gdip_ImageSearch.ahk"
+	#Include "Roblox.ahk"
+	'
+	)
+	
+	; walk import
+	. (NewWalk ?
+	(
+	'
+	#Include "Walk.ahk"
+	
+	movespeed := ' MoveSpeedNum '
+	both            := (Mod(movespeed*1000, 1265) = 0) || (Mod(Round((movespeed+0.005)*1000), 1265) = 0)
+    hasty_guard     := (both || Mod(movespeed*1000, 1100) < 0.00001)
+    gifted_hasty    := (both || Mod(movespeed*1000, 1150) < 0.00001)
+    base_movespeed  := round(movespeed / (both ? 1.265 : (hasty_guard ? 1.1 : (gifted_hasty ? 1.15 : 1))), 0)
+	'
+	) :
+	(
+	'
+	(bitmaps := Map()).CaseSense := 0
+	pToken := Gdip_Startup()
+	Walk(param, *) => HyperSleep(4000/' MoveSpeedNum '*param)
+	'
+	))
+
+	; part 3
+	. (
+	'
+
+	' nm_KeyVars() '
+
+	CoordMode "Pixel", "Screen"
+	OnExit(ExitFunc)
+	pToken := Gdip_Startup()
+
+	bitmaps := Map()
+	#Include "%A_ScriptDir%\nm_image_assets\offset\bitmaps.ahk"
+	#Include "%A_ScriptDir%\nm_image_assets\cocobelt\bitmaps.ahk"
+
+	hwnd := GetRobloxHWND()
+	ActivateRoblox()
+	GetRobloxClientPos(hwnd)
+	offsetY := GetYOffset(hwnd, &offsetfail)
+	if (offsetfail = 1) {
+		MsgBox "Unable to detect in-game GUI offset!``nStopping Catch Combo Coconuts!``n``nThere are a few reasons why this can happen:``n - Incorrect graphics settings (check Troubleshooting Guide!)``n - Your `'Experience Language`' is not set to English``n - Something is covering the top of your Roblox window``n``nJoin our Discord server for support!", "WARNING!!", "0x40030"
+		ExitApp
+	}
+
 	; TODO: add parameters for distance correction
 	; need the bitmaps for coco combo
-	global FwdKey, LeftKey, BackKey, RightKey, RotUp, bitmaps
-	; make sure it's a top down view
+	; make sure it is a top down view
 	sendinput "{" RotUp " 5}"
-
+	; align to a direction
+	sendinput "{" RotLeft " 5}"
+	Sleep 250
+	sendinput "{" RotRight " 5}"
+	Sleep 250
+	Loop 5
+	{
+		sendinput "{" ZoomOut " 1}"
+		Sleep 250
+	}
+	pToken := Gdip_Startup()
+	StatusBar := Gui("-Caption +E0x80000 +AlwaysOnTop +ToolWindow -DPIScale")
+	StatusBar.Show("NA")
+	hbm := CreateDIBSection(windowWidth, windowHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 2), Gdip_SetInterpolationMode(G, 2)
+	; Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0x60000000), -1, -1, windowWidth+1, windowHeight+1), Gdip_DeleteBrush(pBrush)
+	; UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, windowHeight)
+	
+	; copied from nm_Walk above but actually executes instead of string
+	DoWalk(tiles, MoveKey1, MoveKey2:=0){
+		Send "{" MoveKey1 " down}" (MoveKey2 ? "{" MoveKey2 " down}" : "")
+		Walk(tiles)
+		Send "{" MoveKey1 " up}" (MoveKey2 ? "{" MoveKey2 " up}" : "")
+	}
 	; copied from nm_BitterberryFeeder
-	Gdip_GraphicsClear(G), Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0xd0000000), -1, -1, windowWidth+1, 38), Gdip_DeleteBrush(pBrush)
-	Gdip_TextToGraphics(G, "Looking for Combo Coconuts... Right Click or Shift to Stop!", "x0 y0 cffff5f1f Bold Center vCenter s24", "Tahoma", windowWidth, 38)
-	UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, 38)
-	SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc), Gdip_DeleteGraphics(G)
+	SetTopStatus(text)
+	{
+		Gdip_GraphicsClear(G), Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0xd0000000), -1, -1, windowWidth+1, 38), Gdip_DeleteBrush(pBrush)
+		Gdip_TextToGraphics(G, text "Right Click or Shift to Stop!", "x0 y0 cffff5f1f Bold Center vCenter s24", "Tahoma", windowWidth, 38)
+		UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, 38)
+		SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc), Gdip_DeleteGraphics(G)
+	}
+	SetTopStatus("Looking for Combo Coconuts...")
 	try {
 		Hotkey "Shift", ExitFunc, "On"
 		Hotkey "RButton", ExitFunc, "On"
 		Hotkey "F11", ExitFunc, "On"
 	}
 
+	moves := [
+		[100, 0],
+		[0, 100],
+		[-100, 0],
+		[0, -100],
+	]
+
 	pixelsPerTile := 9 ; an estimate based on usages of 9
 	prevdx := 0
 	prevdy := 0
+	iteration := 0
 	Loop {
+		move := moves[Mod(iteration, 4)+1]
+		dx := move[1]
+		dy := move[2]
+		iteration := iteration + 1
+		xkey := LeftKey
+		ykey := FwdKey
+		if (dx >= 0) {
+			xkey := RightKey
+		}
+		if (dy >= 0) {
+			ykey := BackKey
+		}
+		DoWalk(dx//pixelsPerTile, xkey)
+		DoWalk(dy//pixelsPerTile, ykey)
+	}
+	ExitApp
+
+	ExitFunc(*)
+	{
+		try StatusBar.Destroy()
+		try Gdip_Shutdown(pToken)
+		ExitApp
+	}
+	'
+	)
+
+	shell := ComObject("WScript.Shell")
+	exec := shell.Exec('"' exe_path64 '" /script /force *')
+	exec.StdIn.Write(script), exec.StdIn.Close()
+}
+
+/*
+		MsgBox "Checking full screen... it=" iteration
 		hwnd := GetRobloxHWND()
 		GetRobloxClientPos(hwnd)
+		SetTopStatus("Checking full screen... it=" iteration)
+		iteration := iteration + 1
 		; full screen check
 		ccpos := ""
 		pBMScreen := Gdip_BitmapFromScreen(windowX "|" windowY "|" windowWidth "|" windowHeight)
 		; only checks 1 instance
 		if (Gdip_ImageSearch(pBMScreen, bitmaps["combococonut"], &ccpos, , , , , , , ) < 1) {
 			Gdip_DisposeImage(pBMScreen)
-			HyperSleep(250)
+			Sleep 250
+			continue
+		}
+		Gdip_DisposeImage(pBMScreen)
+*/
+/*
+
+
+	pToken := Gdip_Startup()
+	StatusBar := Gui("-Caption +E0x80000 +AlwaysOnTop +ToolWindow -DPIScale")
+	StatusBar.Show("NA")
+	hbm := CreateDIBSection(windowWidth, windowHeight), hdc := CreateCompatibleDC(), obm := SelectObject(hdc, hbm)
+	G := Gdip_GraphicsFromHDC(hdc), Gdip_SetSmoothingMode(G, 2), Gdip_SetInterpolationMode(G, 2)
+	; Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0x60000000), -1, -1, windowWidth+1, windowHeight+1), Gdip_DeleteBrush(pBrush)
+	; UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, windowHeight)
+	
+	; copied from nm_BitterberryFeeder
+	SetTopStatus(text)
+	{
+		Gdip_GraphicsClear(G), Gdip_FillRectangle(G, pBrush := Gdip_BrushCreateSolid(0xd0000000), -1, -1, windowWidth+1, 38), Gdip_DeleteBrush(pBrush)
+		Gdip_TextToGraphics(G, text "Right Click or Shift to Stop!", "x0 y0 cffff5f1f Bold Center vCenter s24", "Tahoma", windowWidth, 38)
+		UpdateLayeredWindow(StatusBar.Hwnd, hdc, windowX, windowY, windowWidth, 38)
+		SelectObject(hdc, obm), DeleteObject(hbm), DeleteDC(hdc), Gdip_DeleteGraphics(G)
+	}
+	SetTopStatus("Looking for Combo Coconuts...")
+	ExitFunc(*)
+	{
+		try StatusBar.Destroy()
+		try Gdip_Shutdown(pToken)
+		ExitApp
+	}
+	try {
+		Hotkey "Shift", ExitFunc, "On"
+		Hotkey "RButton", ExitFunc, "On"
+		Hotkey "F11", ExitFunc, "On"
+	}
+	Sleep 250
+	moves := [
+		[100, 0],
+		[0, 100],
+		[-100, 0],
+		[0, -100],
+	]
+
+	pixelsPerTile := 9 ; an estimate based on usages of 9
+	prevdx := 0
+	prevdy := 0
+	iteration := 0
+	Loop {
+		; MsgBox "Checking full screen... it=" iteration
+		hwnd := GetRobloxHWND()
+		GetRobloxClientPos(hwnd)
+		StatusBar.Show("Checking full screen... it=" iteration)
+		iteration := iteration + 1
+		; full screen check
+		ccpos := ""
+		pBMScreen := Gdip_BitmapFromScreen(windowX "|" windowY "|" windowWidth "|" windowHeight)
+		; only checks 1 instance
+		if (Gdip_ImageSearch(pBMScreen, bitmaps["combococonut"], &ccpos, , , , , , , ) < 1) {
+			Gdip_DisposeImage(pBMScreen)
+			Sleep 250
 			continue
 		}
 		Gdip_DisposeImage(pBMScreen)
@@ -21229,12 +21417,13 @@ nm_CatchComboCoconuts(*){
 		ccy := posxy[2]
 		dx := ccx - (windowX + (windowWidth // 2))
 		dy := ccy - (windowY + (windowHeight // 2))
-		nm_setStatus("Detected", dx = %dx% dy = %dy% prevdx = %prevdx% prevdy = %prevdy%)
+		SetTopStatus("Detected... dx = " dx " dy = " dy " prevdx = " prevdx " prevdy = " prevdy)
 		prevdx := dx
 		prevdy := dy
 		; initial check to see if already in range
 		if (Abs(dx) < 5 && Abs(dy) < 5) {
-			HyperSleep(500)
+			SetTopStatus("In catch zone dx = %dx% dy = %dy%")
+			Sleep 500
 			continue
 		}
 		xkey := LeftKey
@@ -21244,13 +21433,21 @@ nm_CatchComboCoconuts(*){
 		}
 		if (dy >= 0) {
 			ykey := BackKey
-		}.
+		}
 		movement :=
 		(
 		nm_Walk(dx//pixelsPerTile, xkey) "
-		submacros/natro_macro.ahk" nm_Walk(dy//pixelsPerTile, ykey)
+		" nm_Walk(dy//pixelsPerTile, ykey)
 		)
 		nm_createWalk(movement)
 		nm_endWalk()
 	}
-}
+	ExitApp
+
+	ExitFunc(*)
+	{
+		try StatusBar.Destroy()
+		try Gdip_Shutdown(pToken)
+		ExitApp
+	}
+*/
